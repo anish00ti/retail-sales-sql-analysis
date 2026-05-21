@@ -1,0 +1,378 @@
+# Retail Sales Analysis SQL Queries
+
+```sql
+USE sales_db;
+
+-- =====================================================
+-- DATA UNDERSTANDING
+-- =====================================================
+
+-- View Dataset
+SELECT *
+FROM sales
+LIMIT 10;
+
+-- Total Rows
+SELECT COUNT(*) AS total_records
+FROM sales;
+
+-- NULL Checks
+SELECT COUNT(*) FROM sales WHERE sale_date IS NULL;
+SELECT COUNT(*) FROM sales WHERE sale_time IS NULL;
+SELECT COUNT(*) FROM sales WHERE gender IS NULL;
+SELECT COUNT(*) FROM sales WHERE category IS NULL;
+SELECT COUNT(*) FROM sales WHERE age IS NULL;
+SELECT COUNT(*) FROM sales WHERE quantiy IS NULL;
+SELECT COUNT(*) FROM sales WHERE total_sale IS NULL;
+
+-- Duplicate Transactions
+SELECT transaction_id, COUNT(*) AS duplicate_count
+FROM sales
+GROUP BY transaction_id
+HAVING COUNT(*) > 1;
+
+-- Invalid Values
+SELECT COUNT(*) AS negative_quantity
+FROM sales
+WHERE quantiy < 0;
+
+SELECT COUNT(*) AS negative_sales
+FROM sales
+WHERE total_sale < 0;
+
+SELECT COUNT(*) AS invalid_age
+FROM sales
+WHERE age < 0 OR age > 100;
+
+-- =====================================================
+-- DATA CLEANING
+-- =====================================================
+
+SET SQL_SAFE_UPDATES = 0;
+
+UPDATE sales
+SET sale_date = STR_TO_DATE(sale_date, '%Y-%m-%d');
+
+UPDATE sales
+SET sale_time = STR_TO_DATE(sale_time, '%H:%i:%s');
+
+ALTER TABLE sales
+MODIFY COLUMN sale_date DATE,
+MODIFY COLUMN sale_time TIME;
+
+SET SQL_SAFE_UPDATES = 1;
+
+-- =====================================================
+-- SECTION A — BUSINESS OVERVIEW
+-- =====================================================
+
+-- Total Revenue
+SELECT SUM(total_sale) AS total_revenue
+FROM sales;
+
+-- Total Quantity Sold
+SELECT SUM(quantiy) AS total_quantity_sold
+FROM sales;
+
+-- Average Transaction Value
+SELECT AVG(total_sale) AS avg_transaction_value
+FROM sales;
+
+-- Average COGS
+SELECT AVG(cogs) AS avg_cogs
+FROM sales;
+
+-- Unique Customers
+SELECT COUNT(DISTINCT customer_id) AS unique_customers
+FROM sales;
+
+-- Revenue Range
+SELECT MIN(total_sale) AS minimum_sale,
+       MAX(total_sale) AS maximum_sale
+FROM sales;
+
+-- =====================================================
+-- SECTION B — TIME-BASED ANALYSIS
+-- =====================================================
+
+-- Revenue by Month
+SELECT EXTRACT(MONTH FROM sale_date) AS month,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY month
+ORDER BY month;
+
+-- Revenue by Day
+SELECT EXTRACT(DAY FROM sale_date) AS day,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY day
+ORDER BY day;
+
+-- Revenue by Hour
+SELECT EXTRACT(HOUR FROM sale_time) AS hour,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY hour
+ORDER BY hour;
+
+-- Highest Revenue Day
+WITH daily_sales AS (
+    SELECT sale_date,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY sale_date
+)
+SELECT *
+FROM daily_sales
+WHERE revenue = (
+    SELECT MAX(revenue)
+    FROM daily_sales
+);
+
+-- Peak Sales Hour
+WITH hourly_sales AS (
+    SELECT EXTRACT(HOUR FROM sale_time) AS hour,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY hour
+)
+SELECT *
+FROM hourly_sales
+WHERE revenue = (
+    SELECT MAX(revenue)
+    FROM hourly_sales
+);
+
+-- =====================================================
+-- SECTION C — PRODUCT & CATEGORY ANALYSIS
+-- =====================================================
+
+-- Revenue by Category
+SELECT category,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY category;
+
+-- Quantity Sold by Category
+SELECT category,
+       SUM(quantiy) AS quantity_sold
+FROM sales
+GROUP BY category;
+
+-- Best Performing Category
+WITH category_sales AS (
+    SELECT category,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category
+)
+SELECT *
+FROM category_sales
+WHERE revenue = (
+    SELECT MAX(revenue)
+    FROM category_sales
+);
+
+-- Lowest Performing Category
+WITH category_sales AS (
+    SELECT category,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category
+)
+SELECT *
+FROM category_sales
+WHERE revenue = (
+    SELECT MIN(revenue)
+    FROM category_sales
+);
+
+-- Average Transaction Value per Category
+SELECT category,
+       AVG(total_sale) AS avg_transaction_value
+FROM sales
+GROUP BY category;
+
+-- Category Revenue Contribution %
+SET @total_revenue = (
+    SELECT SUM(total_sale)
+    FROM sales
+);
+
+WITH category_contribution AS (
+    SELECT category,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category
+)
+SELECT category,
+       revenue,
+       ROUND((revenue / @total_revenue) * 100, 2) AS contribution_percent
+FROM category_contribution;
+
+-- Profit by Category
+WITH category_profit AS (
+    SELECT category,
+           SUM(total_sale - cogs) AS profit
+    FROM sales
+    GROUP BY category
+)
+SELECT category,
+       profit
+FROM category_profit;
+
+-- =====================================================
+-- SECTION D — CUSTOMER ANALYSIS
+-- =====================================================
+
+-- Top 10 Customers by Revenue
+SELECT customer_id,
+       SUM(total_sale) AS total_spent
+FROM sales
+GROUP BY customer_id
+ORDER BY total_spent DESC
+LIMIT 10;
+
+-- Repeat Customers
+SELECT customer_id,
+       COUNT(*) AS purchase_count
+FROM sales
+GROUP BY customer_id
+HAVING COUNT(*) > 1
+ORDER BY purchase_count DESC;
+
+-- Customer Purchase Frequency
+SELECT customer_id,
+       COUNT(*) AS transaction_count
+FROM sales
+GROUP BY customer_id
+ORDER BY transaction_count DESC;
+
+-- Average Spend per Customer
+SELECT customer_id,
+       AVG(total_sale) AS avg_spending
+FROM sales
+GROUP BY customer_id
+ORDER BY avg_spending DESC;
+
+-- Gender-wise Revenue
+SELECT gender,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY gender;
+
+-- Age Group Analysis
+SET @total_revenue = (
+    SELECT SUM(total_sale)
+    FROM sales
+);
+
+WITH age_groups AS (
+    SELECT *,
+           CASE
+               WHEN age BETWEEN 18 AND 25 THEN 'Gen-Z'
+               WHEN age BETWEEN 26 AND 35 THEN 'Gen-Y'
+               WHEN age BETWEEN 36 AND 50 THEN 'Gen-X'
+               ELSE 'Gen-W'
+           END AS age_group
+    FROM sales
+),
+age_group_sales AS (
+    SELECT age_group,
+           SUM(total_sale) AS revenue
+    FROM age_groups
+    GROUP BY age_group
+)
+SELECT age_group,
+       revenue,
+       ROUND((revenue / @total_revenue) * 100, 2) AS contribution_percent
+FROM age_group_sales;
+
+-- =====================================================
+-- SECTION E — ADVANCED BUSINESS INSIGHTS
+-- =====================================================
+
+-- Gender Contribution %
+WITH gender_sales AS (
+    SELECT gender,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY gender
+)
+SELECT gender,
+       revenue,
+       ROUND((revenue / @total_revenue) * 100, 2) AS contribution_percent
+FROM gender_sales;
+
+-- Monthly Growth Trend
+SELECT EXTRACT(YEAR FROM sale_date) AS year,
+       EXTRACT(MONTH FROM sale_date) AS month,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY year, month
+ORDER BY year, month;
+
+-- Best Selling Hour per Category
+WITH category_hourly_sales AS (
+    SELECT category,
+           EXTRACT(HOUR FROM sale_time) AS hour,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category, hour
+),
+ranked_hours AS (
+    SELECT *,
+           DENSE_RANK() OVER(
+               PARTITION BY category
+               ORDER BY revenue DESC
+           ) AS rank_num
+    FROM category_hourly_sales
+)
+SELECT *
+FROM ranked_hours
+WHERE rank_num = 1;
+
+-- High Value Transactions
+SELECT *
+FROM sales
+WHERE total_sale > (
+    SELECT AVG(total_sale)
+    FROM sales
+);
+
+-- Customers Spending Above Average
+WITH customer_spending AS (
+    SELECT customer_id,
+           SUM(total_sale) AS spending
+    FROM sales
+    GROUP BY customer_id
+),
+avg_customer_spending AS (
+    SELECT AVG(spending) AS avg_spending
+    FROM customer_spending
+)
+SELECT *
+FROM customer_spending
+WHERE spending > (
+    SELECT avg_spending
+    FROM avg_customer_spending
+);
+
+-- Revenue Segmentation
+WITH customer_segments AS (
+    SELECT customer_id,
+           SUM(total_sale) AS total_spending
+    FROM sales
+    GROUP BY customer_id
+)
+SELECT customer_id,
+       total_spending,
+       CASE
+           WHEN total_spending >= 30000 THEN 'High Spender'
+           WHEN total_spending BETWEEN 15000 AND 29999 THEN 'Medium Spender'
+           ELSE 'Low Spender'
+       END AS spending_category
+FROM customer_segments
+ORDER BY total_spending DESC;
+```
