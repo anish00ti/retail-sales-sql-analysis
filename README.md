@@ -2,11 +2,11 @@
 
 # Project Overview
 
-### Project Title:
+## Project Title
 
 Retail Sales Analysis
 
-### Database:
+## Database
 
 `sales_db`
 
@@ -23,7 +23,7 @@ The analysis includes:
 * Advanced business insights
 * Business recommendations
 
-This project was completed entirely using MySQL.
+This project was completed entirely using **MySQL Workbench**.
 
 ---
 
@@ -61,7 +61,7 @@ The dataset contains retail sales transaction records.
 | gender         | TEXT      | Gender of customer            |
 | age            | INT       | Customer age                  |
 | category       | TEXT      | Product category              |
-| quantiy        | INT       | Quantity purchased            |
+| quantity       | INT       | Quantity purchased            |
 | price_per_unit | INT       | Product price per unit        |
 | cogs           | INT       | Cost of goods sold            |
 | total_sale     | INT       | Total transaction amount      |
@@ -72,14 +72,14 @@ The dataset contains retail sales transaction records.
 
 ## 1. Database Setup
 
-### Database Creation
+### Create Database
 
 ```sql
 CREATE DATABASE sales_db;
 USE sales_db;
 ```
 
-### Table Creation
+### Create Table
 
 ```sql
 CREATE TABLE sales (
@@ -90,7 +90,7 @@ CREATE TABLE sales (
     gender TEXT,
     age INT,
     category TEXT,
-    quantiy INT,
+    quantity INT,
     price_per_unit INT,
     cogs INT,
     total_sale INT
@@ -114,16 +114,30 @@ The dataset was inspected and cleaned before analysis.
 
 ---
 
-## Data Cleaning Queries
-
-### Check Total Records
+## View Dataset
 
 ```sql
-SELECT COUNT(*)
+SELECT *
+FROM sales
+LIMIT 10;
+```
+
+---
+
+## Check Total Records
+
+```sql
+SELECT COUNT(*) AS total_records
 FROM sales;
 ```
 
-### Check NULL Values
+### Finding
+
+* Total Records: **2001**
+
+---
+
+## Check NULL Values
 
 ```sql
 SELECT *
@@ -134,31 +148,50 @@ WHERE sale_date IS NULL
    OR gender IS NULL
    OR age IS NULL
    OR category IS NULL
-   OR quantiy IS NULL
+   OR quantity IS NULL
    OR total_sale IS NULL;
 ```
 
-### Check Duplicate Transactions
+### Finding
+
+* No NULL values found.
+
+---
+
+## Check Duplicate Transactions
 
 ```sql
-SELECT transaction_id, COUNT(*)
+SELECT transaction_id,
+       COUNT(*) AS duplicate_count
 FROM sales
 GROUP BY transaction_id
 HAVING COUNT(*) > 1;
 ```
 
-### Check Invalid Values
+### Finding
+
+* No duplicate transaction IDs found.
+
+---
+
+## Check Invalid Values
 
 ```sql
 SELECT *
 FROM sales
-WHERE quantiy < 0
+WHERE quantity < 0
    OR total_sale < 0
    OR age < 0
    OR age > 100;
 ```
 
-### Convert Date & Time Columns
+### Finding
+
+* No invalid quantity, sales, or age values found.
+
+---
+
+## Convert Date & Time Columns
 
 ```sql
 UPDATE sales
@@ -176,9 +209,11 @@ MODIFY COLUMN sale_time TIME;
 
 # 3. Exploratory Data Analysis (EDA)
 
----
-
 # Section A — Overall Business Overview
+
+This section focuses on overall business performance metrics.
+
+---
 
 ## Business Questions
 
@@ -190,44 +225,83 @@ MODIFY COLUMN sale_time TIME;
 
 ---
 
-## Key SQL Queries
-
-### Total Revenue
+## Total Revenue
 
 ```sql
 SELECT SUM(total_sale) AS total_revenue
 FROM sales;
 ```
 
-### Total Quantity Sold
+### Finding
+
+* Total Revenue: **908,230**
+
+---
+
+## Total Quantity Sold
 
 ```sql
-SELECT SUM(quantiy) AS total_quantity
+SELECT SUM(quantity) AS total_quantity_sold
 FROM sales;
 ```
 
-### Average Transaction Value
+### Finding
+
+* Total Quantity Sold: **4,995**
+
+---
+
+## Average Transaction Value
 
 ```sql
 SELECT AVG(total_sale) AS avg_transaction_value
 FROM sales;
 ```
 
-### Unique Customers
+### Finding
 
-```sql
-SELECT COUNT(DISTINCT customer_id)
-FROM sales;
-```
+* Average Transaction Value: **457**
 
 ---
 
-## Key Findings
+## Average Cost of Goods Sold
 
-* Total Revenue: **908,230**
-* Total Quantity Sold: **4,995**
-* Average Transaction Value: **457**
+```sql
+SELECT AVG(cogs) AS avg_cogs
+FROM sales;
+```
+
+### Finding
+
+* Average COGS: **95.17**
+
+---
+
+## Unique Customers
+
+```sql
+SELECT COUNT(DISTINCT customer_id) AS unique_customers
+FROM sales;
+```
+
+### Finding
+
 * Unique Customers: **155**
+
+---
+
+## Revenue Range
+
+```sql
+SELECT MIN(total_sale) AS minimum_sale,
+       MAX(total_sale) AS maximum_sale
+FROM sales;
+```
+
+### Finding
+
+* Lowest Sale: **25**
+* Highest Sale: **2000**
 
 ---
 
@@ -256,6 +330,59 @@ GROUP BY month
 ORDER BY month;
 ```
 
+### Key Finding
+
+* Sales increased significantly during months **9–12**, showing strong seasonal demand.
+
+---
+
+## Sales by Day
+
+```sql
+SELECT EXTRACT(DAY FROM sale_date) AS day,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY day
+ORDER BY day;
+```
+
+---
+
+## Sales by Hour
+
+```sql
+SELECT EXTRACT(HOUR FROM sale_time) AS hour,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY hour
+ORDER BY hour;
+```
+
+---
+
+## Highest Revenue Date
+
+```sql
+WITH daily_sales AS (
+    SELECT sale_date,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY sale_date
+)
+
+SELECT *
+FROM daily_sales
+WHERE revenue = (
+    SELECT MAX(revenue)
+    FROM daily_sales
+);
+```
+
+### Finding
+
+* Highest Revenue Date: **2022-10-10**
+* Revenue Generated: **8,500**
+
 ---
 
 ## Peak Sales Hour
@@ -267,6 +394,7 @@ WITH hourly_sales AS (
     FROM sales
     GROUP BY hour
 )
+
 SELECT *
 FROM hourly_sales
 WHERE revenue = (
@@ -275,13 +403,10 @@ WHERE revenue = (
 );
 ```
 
----
+### Finding
 
-## Key Findings
-
-* Sales increased significantly during months **9–12**
-* Peak business hours were between **19:00–20:00**
-* Highest revenue date was **2022-10-10**
+* Peak Sales Hour: **19:00**
+* Revenue Generated: **109,460**
 
 ---
 
@@ -309,9 +434,95 @@ FROM sales
 GROUP BY category;
 ```
 
+### Findings
+
+| Category    | Revenue |
+| ----------- | ------- |
+| Electronics | 311,445 |
+| Clothing    | 309,995 |
+| Beauty      | 286,790 |
+
 ---
 
-## Category Contribution %
+## Quantity Sold by Category
+
+```sql
+SELECT category,
+       SUM(quantity) AS quantity_sold
+FROM sales
+GROUP BY category;
+```
+
+### Findings
+
+| Category    | Quantity Sold |
+| ----------- | ------------- |
+| Clothing    | 1,780         |
+| Electronics | 1,682         |
+| Beauty      | 1,533         |
+
+---
+
+## Best Performing Category
+
+```sql
+WITH category_sales AS (
+    SELECT category,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category
+)
+
+SELECT *
+FROM category_sales
+WHERE revenue = (
+    SELECT MAX(revenue)
+    FROM category_sales
+);
+```
+
+### Finding
+
+* Electronics generated the highest revenue.
+
+---
+
+## Lowest Performing Category
+
+```sql
+WITH category_sales AS (
+    SELECT category,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category
+)
+
+SELECT *
+FROM category_sales
+WHERE revenue = (
+    SELECT MIN(revenue)
+    FROM category_sales
+);
+```
+
+### Finding
+
+* Beauty generated the lowest revenue.
+
+---
+
+## Average Transaction Value per Category
+
+```sql
+SELECT category,
+       AVG(total_sale) AS avg_transaction_value
+FROM sales
+GROUP BY category;
+```
+
+---
+
+## Category Contribution Percentage
 
 ```sql
 SET @total_revenue = (
@@ -325,27 +536,37 @@ WITH category_sales AS (
     FROM sales
     GROUP BY category
 )
+
 SELECT category,
        revenue,
        ROUND((revenue / @total_revenue) * 100, 2) AS contribution_percent
 FROM category_sales;
 ```
 
+### Key Insight
+
+* Revenue contribution was balanced across all categories.
+
 ---
 
-## Key Findings
+## Profit by Category
 
-| Category    | Revenue |
-| ----------- | ------- |
-| Electronics | 311,445 |
-| Clothing    | 309,995 |
-| Beauty      | 286,790 |
+```sql
+WITH category_profit AS (
+    SELECT category,
+           SUM(total_sale - cogs) AS profit
+    FROM sales
+    GROUP BY category
+)
 
-### Insights
+SELECT *
+FROM category_profit
+ORDER BY profit DESC;
+```
 
-* Electronics generated the highest revenue
-* Clothing generated the highest profit
-* Revenue contribution was balanced across categories
+### Finding
+
+* Clothing generated the highest profit.
 
 ---
 
@@ -364,7 +585,7 @@ This section focuses on customer behavior and spending patterns.
 
 ---
 
-## Top Customers
+## Top 10 Customers by Revenue
 
 ```sql
 SELECT customer_id,
@@ -373,6 +594,51 @@ FROM sales
 GROUP BY customer_id
 ORDER BY total_spending DESC
 LIMIT 10;
+```
+
+### Insight
+
+* These customers can be targeted using loyalty programs and personalized offers.
+
+---
+
+## Repeat Customers
+
+```sql
+SELECT customer_id,
+       COUNT(*) AS purchase_count
+FROM sales
+GROUP BY customer_id
+HAVING COUNT(*) > 1
+ORDER BY purchase_count DESC;
+```
+
+### Insight
+
+* Repeat customers indicate strong customer retention.
+
+---
+
+## Customer Purchase Frequency
+
+```sql
+SELECT customer_id,
+       COUNT(*) AS number_of_transactions
+FROM sales
+GROUP BY customer_id
+ORDER BY number_of_transactions DESC;
+```
+
+---
+
+## Average Spend per Customer
+
+```sql
+SELECT customer_id,
+       AVG(total_sale) AS avg_customer_spending
+FROM sales
+GROUP BY customer_id
+ORDER BY avg_customer_spending DESC;
 ```
 
 ---
@@ -385,6 +651,17 @@ SELECT gender,
 FROM sales
 GROUP BY gender;
 ```
+
+### Finding
+
+| Gender | Revenue |
+| ------ | ------- |
+| Male   | 445,120 |
+| Female | 463,110 |
+
+### Insight
+
+* Revenue contribution between male and female customers is almost equal.
 
 ---
 
@@ -401,19 +678,17 @@ WITH age_groups AS (
            END AS age_group
     FROM sales
 )
+
 SELECT age_group,
        SUM(total_sale) AS revenue
 FROM age_groups
 GROUP BY age_group;
 ```
 
----
+### Findings
 
-## Key Findings
-
-* Male and female revenue contribution was nearly equal
-* Gen-X and Gen-W customers generated the highest revenue
-* Gen-Z customers contributed the lowest revenue
+* Gen-X and Gen-W customers generated the highest revenue.
+* Gen-Z customers contributed the lowest revenue.
 
 ---
 
@@ -423,13 +698,97 @@ This section focuses on deeper business analysis.
 
 ---
 
-## Advanced Analysis Performed
+## Monthly Growth Trend
 
-* Monthly growth trend
-* Best-selling hour per category
-* High-value transactions
-* Customer segmentation
-* Spending behavior analysis
+```sql
+SELECT EXTRACT(YEAR FROM sale_date) AS year,
+       EXTRACT(MONTH FROM sale_date) AS month,
+       SUM(total_sale) AS revenue
+FROM sales
+GROUP BY year, month
+ORDER BY year, month;
+```
+
+### Insight
+
+* Revenue showed a strong upward trend during the final months of the year.
+
+---
+
+## Best-Selling Hour per Category
+
+```sql
+WITH hourly_category_sales AS (
+    SELECT category,
+           EXTRACT(HOUR FROM sale_time) AS hour,
+           SUM(total_sale) AS revenue
+    FROM sales
+    GROUP BY category, hour
+),
+
+ranked_sales AS (
+    SELECT *,
+           DENSE_RANK() OVER(
+               PARTITION BY category
+               ORDER BY revenue DESC
+           ) AS ranking
+    FROM hourly_category_sales
+)
+
+SELECT *
+FROM ranked_sales
+WHERE ranking = 1;
+```
+
+### Insight
+
+* Most categories achieved maximum sales between **19:00–20:00**.
+
+---
+
+## High-Value Transactions
+
+```sql
+SELECT *
+FROM sales
+WHERE total_sale > (
+    SELECT AVG(total_sale)
+    FROM sales
+);
+```
+
+### Insight
+
+* High-value transactions help identify premium purchasing behavior.
+
+---
+
+## Customers Spending Above Average
+
+```sql
+WITH customer_spending AS (
+    SELECT customer_id,
+           SUM(total_sale) AS spending
+    FROM sales
+    GROUP BY customer_id
+),
+
+average_spending AS (
+    SELECT AVG(spending) AS avg_spending
+    FROM customer_spending
+)
+
+SELECT *
+FROM customer_spending
+WHERE spending > (
+    SELECT avg_spending
+    FROM average_spending
+);
+```
+
+### Insight
+
+* These customers can be targeted as high-value buyers.
 
 ---
 
@@ -442,38 +801,40 @@ WITH customer_segments AS (
     FROM sales
     GROUP BY customer_id
 )
+
 SELECT *,
        CASE
            WHEN spending >= 30000 THEN 'High Spender'
            WHEN spending BETWEEN 15000 AND 29999 THEN 'Medium Spender'
            ELSE 'Low Spender'
        END AS customer_segment
-FROM customer_segments;
+FROM customer_segments
+ORDER BY spending DESC;
 ```
 
 ---
 
 # Final Business Insights
 
-## Top 5 Insights
+# Top 5 Insights
 
-### 1. Strong Seasonal Sales Pattern
+## 1. Strong Seasonal Sales Pattern
 
 Sales increased heavily during months 9–12, indicating strong seasonal demand.
 
-### 2. Evening Hours Generate Maximum Revenue
+## 2. Evening Hours Generate Maximum Revenue
 
 Most purchases occur between 19:00–20:00.
 
-### 3. Balanced Category Performance
+## 3. Balanced Category Performance
 
 All categories contributed almost equally to total revenue.
 
-### 4. Older Customers Spend More
+## 4. Older Customers Spend More
 
 Gen-X and Gen-W customers generated significantly more revenue.
 
-### 5. Gender Contribution is Balanced
+## 5. Gender Contribution is Balanced
 
 Revenue contribution from male and female customers was nearly equal.
 
@@ -535,6 +896,9 @@ This project helped transform raw sales data into meaningful business insights t
 # Author
 
 ## Anish Tiwari
+
+
+
 
 
 
